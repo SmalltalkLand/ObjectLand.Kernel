@@ -7,7 +7,7 @@ install: function(){
     return new Promise(function(pc,e){
 if(!window.olNative)e(new Error('no native support'));
 olRuntime.module('_m$_' + uuid.toString()).requires(['ol.apps']).toRun(function(mc){
-window.olNative.load(this._url).then(function(){
+window.olNative.load(url).then(function(){
 mc()
 pc()
 })
