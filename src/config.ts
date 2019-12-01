@@ -1,0 +1,1 @@
+export default {$mount(e: HTMLElement){return function(){}},$rootComponent: {}}
