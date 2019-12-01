@@ -1,6 +1,6 @@
 export interface Component{
 addRenderListener(f: Renderer ): Function;
-embed(other: Framework | HTMLElement): Function;
+embed(other: Framework | HTMLElement): Function | void;
 pipeDebuggingInfoTo(port: WritableStream): Function;
 }
 export interface Renderer{
@@ -9,7 +9,7 @@ export interface Renderer{
 }
 export interface Framework{
     $rootComponent: Component;
-$mount(dom:HTMLElement): Function;
+$mount(dom:HTMLElement): Function; 
 }
 
 export class UI{
