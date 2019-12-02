@@ -1,2 +1,2 @@
 import {UI} from './ui/main'
-UI
+export default UI

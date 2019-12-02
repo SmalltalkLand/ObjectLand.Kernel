@@ -13,6 +13,7 @@ $mount(dom:HTMLElement): Function;
 }
 
 export class UI{
+    public static Current: UI;
     private _m: any;
 constructor(m: Framework){this._m = m}
 
