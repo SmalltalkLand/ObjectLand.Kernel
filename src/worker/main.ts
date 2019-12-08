@@ -1,13 +1,17 @@
-export default function sw_main(self: any){
-    let settingsStream= new WritableStream({write: async function(t){
+import pipe from '../util/pipe'
 
+export default function sw_main(self: any,server: any): Promise<Request| undefined>{
+    return new Promise(c => {
+let settingsPipe = pipe();
+if(!server)return c();
+server.get(self.location + '/settings/api/set',function(req: any,response: Response | null){
+req.body.pipeTo(settingsPipe[1]);
 
-    }});
-self.addEventListener('fetch',function(evt: any){
-    let url = evt.request.url as String;
-    if(url.startsWith('https://olSettings.')){evt.request.body.pipeTo(settingsStream); evt.respondWith(new Response('Settings Updated'))};
-evt.respondWith(fetch(evt.request));
+});
+server.get(self.location + '/settings/api/stream',function(req: any,response: Response | null){
+return new Response(settingsPipe[0]);
 
 })
-
+server.get(self.location + '/init',function(req: any,response: Response | null){c(req)});
+})
 }
