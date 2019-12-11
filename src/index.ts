@@ -5,6 +5,8 @@ import Link from './link/main'
 import sw_main from'./worker/main'
 import argv from './argv-handler'
 import gg_init from './gadgets/framework'
+import scratchPrimLoader from './squeak-prims/scratch'
+import serialPrimLoader from './squeak-prims/serial'
 let win = (window || self || global) as any;
 let chrome = win.chrome;
 let kapi = (win.olKAPI || (win.olKAPI = {}));
@@ -12,6 +14,7 @@ kapi.addUI = (ui: any) => {UI.Current = new UI(ui)};
 let useSqueak = true;
 let workerMap: Map<any,Worker> = new Map();
 let libs: Map<string,any> = new Map();
+let theSenderForGadgets: Function | undefined;
 let argvGlobalMap: Map<any,Array<any>> = new Map();
 let svm: any, ex: Ex | undefined, svevt: any, link: Link = new Link(UI), server: any, initRequest: Request | undefined, services: Array<any> | undefined;
 let s_canvas: any = new OffscreenCanvas(1000,1000);
@@ -23,44 +26,53 @@ if(win.workerMap){
     win.ol_w_set = function(k: any,v: Worker){workerMap.set(k,v); v.addEventListener('message',(evt: any) => {win.postMessage({responseID: k,data: evt.data,transferables: evt.data.transferables},'*',evt.data.transferables)})}
 };
 if(win.System){
-win.System.amdDefine('ol.bridge',[],() => {
-return {
-
-
-}
-
+win.System.amdDefine('ol.bridge',['exports'],(exports: any) => {
+win.postMessage({type: 'chrome',id: 'lively-bridge-init',data: {}},'*')
 });
 
 }
 if(chrome)ex = new Ex(chrome,UI,{getSqueakProxy: () => svevt && svevt.sProxy,getLink: () => link});
-if(!chrome && win.document)gg_init({win, workerMap, libs, chrome: undefined})
+if(!chrome && win.document){gg_init({win, workerMap, libs, chrome: undefined,callback: (send: Function) => {theSenderForGadgets = send}}); useSqueak = useSqueak && (win.isGadgetHelper)};
 if((win as any).ServiceWorkerWare)server = new (win as any).ServiceWorkerWare();
 if(win.require && !server)try{server = win.require('express')()}catch(err){};
 if(win.document)link.listen(document.body);
+if(win.location && (win.location.hostname.includes('ol') || win.location.protocol === 'chrome-extension'))useSqueak = true;
 if(useSqueak)runSqueak({url: win.location.protocol + '//' + win.location.hostname + '/squeak/squeak.image',component: {element: {getContext(t: string){
     if(win.document && UI.Current)return (UI.Current.getFramework().$rootComponent as any).SqueakDisplay.element.getContext(t);
     if(kapi.getSqueakContext)return kapi.getSqueakContext(t);
     return s_canvas.getContext(t)
-}}}}).then(vm => {if(kapi.onSqueakLinked)return kapi.onSqueakLinked(vm).then((_v: any) => vm); return vm}).then(vm => {argv(vm.primHandler.display,argvGlobalMap);let JSClass: any;vm.builtinModules.ObjectLandKernelWebPlugin = {
-    getBody(argCount: number){vm.pop(); vm.push(vm.primHandler.makeStObject(initRequest && initRequest.body,JSClass))},
-    setJSClass(argCount: number){vm.push(JSClass = vm.pop())},
-    addPrimitive(argCount: number){let popped = vm.pop(), jsObject = popped.jsObject; if(!jsObject){vm.push(popped); jsObject = vm};let moduleName; (jsObject.primHandler.loadedModules[moduleName = vm.primHandler.js_fromStObject(vm.pop())] || (jsObject.primHandler.loadedModules[moduleName] = {}))[vm.primHandler.js_fromStObject(vm.pop())] = ((f: Function) => (argCount: number) => {
+}}}}).then(vm => {if(kapi.onSqueakLinked)return kapi.onSqueakLinked(vm).then((_v: any) => vm); return vm}).then(vm => {argv(vm.primHandler.display,argvGlobalMap);vm.titleMap = new Map(); scratchPrimLoader(vm,win);serialPrimLoader(vm);let JSClass: any;vm.builtinModules.ObjectLandKernelWebPlugin = {
+    getBody(argCount: number){vm.pop(); vm.push(vm.primHandler.makeStObject(initRequest && initRequest.body,JSClass)); return true},
+    setJSClass(argCount: number){vm.push(JSClass = vm.pop()); return true},
+    addPrimitive(argCount: number){
+        let popped = vm.pop(), jsObject = popped.jsObject;
+         if(!jsObject){vm.push(popped); jsObject = vm};
+         let moduleName; 
+         (jsObject.primHandler.loadedModules[moduleName = vm.primHandler.js_fromStObject(vm.pop())] || jsObject.primHandler.builtinModules[moduleName]|| (jsObject.primHandler.loadedModules[moduleName] = {}))[vm.primHandler.js_fromStObject(vm.pop())] = ((f: Function) => (argCount: number) => {
 let unfreeze: Function = jsObject.freeze();
-f(jsObject).then(unfreeze)
+f(jsObject).then(unfreeze);
+return true
 
-    })(vm.ol_fromStBlock(vm.pop())); vm.push(vm.pop())},
+    })(vm.js_fromStBlock(vm.pop())); vm.push(vm.pop()); return true},
     addProperty(argCount: number){
-        let index = vm.pop(),
+        let index = vm.pop() - 1,
         theGet = vm.primHandler.js_fromStObject(vm.pop(),JSClass),
         theSet = vm.primHandler.js_fromStObject(vm.pop(),JSClass), 
         p, cachedValue: any;
         
-        Object.defineProperty((p = vm.pop()).pointers || p.bytes || p.words,index,{get: () => {theGet().then((v: any) => cachedValue = v);return cachedValue},set: (v: any) => {theSet(v)}}) 
+        Object.defineProperty((p = vm.pop()).pointers || p.bytes || p.words,index === -1 ? 'sqClass': index,{get: () => {theGet().then((v: any) => cachedValue = v);return cachedValue},set: (v: any) => {theSet(v)}}) 
     },
-    runVM(argCount: number){let theArgs = new Array(argCount).map(vm.pop.bind(vm)); vm.pop(); let unfreeze: Function = vm.freeze(); runSqueak(vm.fromStObject(theArgs[0])).then(nvm => {unfreeze(); vm.push(vm.primHandler.makeStObject(nvm,JSClass))})},
-    sendChromeMessage(argCount: number){let message = vm.pop().jsObject; if(chrome){let unfreeze: Function = vm.freeze(); chrome.runtime.postMessage(message,(result: any) => {vm.push(result); unfreeze()})}},
-    get getServices(){if(!services)return (argCount: number) => {}; return (argCount: number) => {vm.pop(); vm.push(vm.push(vm.primHandler.makeStObject(services,JSClass)))}},
+    onMessage(argCount: number){window.addEventListener('message',vm.primHandler.js_fromStObject(vm.pop(),JSClass).bind(window,window.postMessage.bind(window))); vm.push(true); return true},
+    runVM(argCount: number){let theArgs = new Array(1).map(vm.pop.bind(vm)); let unfreeze: Function = vm.freeze(); runSqueak(vm.fromStObject(theArgs[0])).then(nvm => {Object.defineProperty(nvm,'parent',{get: () => vm}); unfreeze(); serialPrimLoader(nvm); scratchPrimLoader(nvm,win); vm.push(vm.primHandler.makeStObject(nvm,JSClass))}); return true},
+    sendChromeMessage(argCount: number){let message = vm.primHandler.js_fromStObject(vm.pop(),JSClass); if(chrome){let unfreeze: Function = vm.freeze(); chrome.runtime.postMessage(message,(result: any) => {vm.push(result); unfreeze()})}; return true},
+    onChromeMessage(argCount: number){let messageHandler = vm.primHandler.js_fromStObject(vm.pop(),JSClass); if(chrome){chrome.runtime.onMessage.addListener(messageHandler)}; return true},
+    get getServices(){if(!services)return (argCount: number) => {return false}; return (argCount: number) => {vm.pop(); vm.push(vm.push(vm.primHandler.makeStObject(services,JSClass))); return true}},
     get kapiPrimitive(){return kapi.primitive.bind(kapi,vm)},
 }; vm.on('load',(evt: any) => {svm = vm;svevt = evt;if(ex)ex.onSqueakLinked(svevt.sProxy)})});
 sw_main(win,server).then(request => {if(request)initRequest = request});
-if(ex)ex.initServices().then(servicesFromEx => {services = servicesFromEx}) 
+if(ex)ex.initServices().then(servicesFromEx => {services = servicesFromEx});
+win.addEventListener('message',(evt: any) => {
+    if(evt.data.type === 'exlinkgadget')theSenderForGadgets(Object.assign({},evt.data.data,{transferables: evt.data.transferables}),evt.data.transferables)
+if(chrome && evt.data.id && evt.data.data && evt.data.type === 'chrome')chrome.runtime.postMessage(Object.assign({},evt.data.data,{isFromWebpage: true,id: evt.data.id}),(message: any) => {win.postMessage({chromeResponseID: evt.data.id,chromeResponseData: message})});
+if(theSenderForGadgets && evt.data.type === 'gadget')theSenderForGadgets(evt.data.data,evt.data.transferables);
+});
