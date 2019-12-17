@@ -9,6 +9,7 @@ import scratchPrimLoader from './squeak-prims/scratch'
 import serialPrimLoader from './squeak-prims/serial'
 import Console from './console'
 import AppManager from './app-manager'
+import Sheet from './sheet-base'
 let win = (window || self || global) as any;
 let enq: (obj: any) => any = undefined;
 let currentApp: any;
@@ -17,6 +18,7 @@ let c = Console((e: any) => enq = e,() => currentApp);
 let am = new AppManager(allApps,{getCurrent: () => currentApp,setCurrent: (v) => {currentApp = v}});
 win._$console = c;
 win._$allApps = allApps;
+win.Sheet = Sheet;
 win.addEventListener('message',(mevt: any) => {
 if(mevt.data.type === 'createConsole'){let channel = new MessageChannel(); mevt.source.postMessage({port: channel.port2},'*',[channel.port2]); allApps.push(new WritableStream({write: channel.port2.postMessage.bind(channel.port2)}));channel.port1.addEventListener('message',evt => enq(evt.data))};
 
