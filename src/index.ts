@@ -7,7 +7,22 @@ import argv from './argv-handler'
 import gg_init from './gadgets/framework'
 import scratchPrimLoader from './squeak-prims/scratch'
 import serialPrimLoader from './squeak-prims/serial'
+import Console from './console'
+import AppManager from './app-manager'
 let win = (window || self || global) as any;
+let enq: (obj: any) => any = undefined;
+let currentApp: any;
+let allApps: Array<any> = [];
+let c = Console((e: any) => enq = e,() => currentApp);
+let am = new AppManager(allApps,{getCurrent: () => currentApp,setCurrent: (v) => {currentApp = v}});
+win._$console = c;
+win._$allApps = allApps;
+win.addEventListener('message',(mevt: any) => {
+if(mevt.data.type === 'createConsole'){let channel = new MessageChannel(); mevt.source.postMessage({port: channel.port2},'*',[channel.port2]); allApps.push(new WritableStream({write: channel.port2.postMessage.bind(channel.port2)}));channel.port1.addEventListener('message',evt => enq(evt.data))};
+
+});
+win.console.log = ((old) => (text: any) => {enq(text); return old(text)})(win.console.log);
+win.prompt = ((old) => (text: string) => {return old(text)})(win.prompt);
 let chrome = win.chrome;
 let kapi = (win.olKAPI || (win.olKAPI = {}));
 kapi.addUI = (ui: any) => {UI.Current = new UI(ui)};
@@ -41,7 +56,7 @@ if(useSqueak)runSqueak({url: win.location.protocol + '//' + win.location.hostnam
     if(win.document && UI.Current)return (UI.Current.getFramework().$rootComponent as any).SqueakDisplay.element.getContext(t);
     if(kapi.getSqueakContext)return kapi.getSqueakContext(t);
     return s_canvas.getContext(t)
-}}}}).then(vm => {if(kapi.onSqueakLinked)return kapi.onSqueakLinked(vm).then((_v: any) => vm); return vm}).then(vm => {argv(vm.primHandler.display,argvGlobalMap);vm.titleMap = new Map(); scratchPrimLoader(vm,win);serialPrimLoader(vm);let JSClass: any;vm.builtinModules.ObjectLandKernelWebPlugin = {
+}}}}).then(vm => {win.onRollyAdded = ((old: Function | undefined) => (rolly: any) => {rolly.initSqueak(vm); return old(rolly)})(win.onRollyAdded); return vm}).then(vm => {if(kapi.onSqueakLinked)return kapi.onSqueakLinked(vm).then((_v: any) => vm); return vm}).then(vm => {argv(vm.primHandler.display,argvGlobalMap);vm.titleMap = new Map(); scratchPrimLoader(vm,win);serialPrimLoader(vm);let JSClass: any;vm.builtinModules.ObjectLandKernelWebPlugin = {
     getBody(argCount: number){vm.pop(); vm.push(vm.primHandler.makeStObject(initRequest && initRequest.body,JSClass)); return true},
     setJSClass(argCount: number){vm.push(JSClass = vm.pop()); return true},
     addPrimitive(argCount: number){
