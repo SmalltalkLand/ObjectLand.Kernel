@@ -1,3 +1,5 @@
+import _ from 'lodash-es'
+
 import Ex from './ex'
 import UI from './ui'
 import runSqueak from './squeak'
@@ -24,7 +26,7 @@ let link: Link = new Link(UI,{onFlagScratchClicked: (l: Link,evt: any) => {
     let pangeaDetected = [].filter.call(titles,(t: { innerHTML: string }) => t.innerHTML.includes('Pangea'));
     if(pangeaDetected.length){
 pangeaDetected.forEach((p: HTMLElement) => p.addEventListener('click',(nevt: any) => {let snap = window.open('https://snap.berkeley.edu/embed?project=Pangea%20OS%20NT&user=gkgoat&showTitle=true&showAuthor=true&editButton=true&pauseButton=true');
-sn_init(snap,win,allApps);
+sn_init(snap,win,enq,allApps);
 }));
 
     };
@@ -74,11 +76,12 @@ if((win as any).ServiceWorkerWare)server = new (win as any).ServiceWorkerWare();
 if(win.require && !server)try{server = win.require('express')()}catch(err){};
 if(win.document)link.listen(document.body);
 if(win.location && (win.location.hostname.includes('ol') || win.location.protocol === 'chrome-extension'))useSqueak = true;
-if(useSqueak)runSqueak({url: win.location.protocol + '//' + win.location.hostname + '/squeak/squeak.image',component: {element: {getContext(t: string){
+var squeak = _.once(_.partial(runSqueak,({url: win.location.protocol + '//' + win.location.hostname + '/squeak/squeak.image',component: {element: {getContext(t: string){
     if(win.document && UI.Current)return (UI.Current.getFramework().$rootComponent as any).SqueakDisplay.element.getContext(t);
     if(kapi.getSqueakContext)return kapi.getSqueakContext(t);
     return s_canvas.getContext(t)
-}}}}).then(vm => {win.onRollyAdded = ((old: Function | undefined) => (rolly: any) => {rolly.initSqueak(vm); return old(rolly)})(win.onRollyAdded); return vm}).then(vm => {if(kapi.onSqueakLinked)return kapi.onSqueakLinked(vm).then((_v: any) => vm); return vm}).then(vm => {argv(vm.primHandler.display,argvGlobalMap);vm.titleMap = new Map(); scratchPrimLoader(vm,win);serialPrimLoader(vm);let JSClass: any;vm.builtinModules.ObjectLandKernelWebPlugin = {
+}}},
+then: (vm: any) => {Promise.resolve(vm).then(vm => {win.onRollyAdded = ((old: Function | undefined) => (rolly: any) => {rolly.initSqueak(vm); return old(rolly)})(win.onRollyAdded); return vm}).then(vm => {if(kapi.onSqueakLinked)return kapi.onSqueakLinked(vm).then((_v: any) => vm); return vm}).then(vm => {argv(vm.primHandler.display,argvGlobalMap);vm.titleMap = new Map(); scratchPrimLoader(vm,win);serialPrimLoader(vm);let JSClass: any;vm.builtinModules.ObjectLandKernelWebPlugin = {
     getBody(argCount: number){vm.pop(); vm.push(vm.primHandler.makeStObject(initRequest && initRequest.body,JSClass)); return true},
     setJSClass(argCount: number){vm.push(JSClass = vm.pop()); return true},
     addPrimitive(argCount: number){
@@ -105,7 +108,9 @@ return true
     onChromeMessage(argCount: number){let messageHandler = vm.primHandler.js_fromStObject(vm.pop(),JSClass); if(chrome){chrome.runtime.onMessage.addListener(messageHandler)}; return true},
     get getServices(){if(!services)return (argCount: number) => {return false}; return (argCount: number) => {vm.pop(); vm.push(vm.push(vm.primHandler.makeStObject(services,JSClass))); return true}},
     get kapiPrimitive(){return kapi.primitive.bind(kapi,vm)},
-}; vm.on('load',(evt: any) => {svm = vm;svevt = evt;if(ex)ex.onSqueakLinked(svevt.sProxy)})}).catch(console.log.bind(console));
+}; vm.on('load',(evt: any) => {svm = vm;svevt = evt;if(ex)ex.onSqueakLinked(svevt.sProxy)})}).catch(console.log.bind(console));},
+
+})));
 sw_main(win,server).then(request => {if(request)initRequest = request});
 if(ex)ex.initServices().then(servicesFromEx => {services = servicesFromEx});
 win.addEventListener('message',(evt: any) => {

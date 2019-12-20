@@ -13,6 +13,7 @@ module.exports = {
   },
   resolve: {
     extensions: [ '.tsx', '.ts', '.js' ],
+    modules: ['node_modules'],
   },
   output: {
     filename: 'main.js',

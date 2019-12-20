@@ -1,4 +1,4 @@
-export default function sn_init(snap: any,win: any,allApps: Array<WritableStream>){
+export default function sn_init(snap: any,win: any,enq: any,allApps: Array<WritableStream>){
     var alertPorts = new MessageChannel();
     var consolePorts = new MessageChannel();
     snap.postMessage({type: 'initPorts',alertPort: alertPorts.port2,consolePorts: consolePorts.port2},'*',[alertPorts.port2,consolePorts.port2]);
