@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/gkgoat/ObjectLand.Kernel#readme",
   "devDependencies": {
+    "@types/lodash-es": "^4.17.3",
     "@types/node": "^12.12.14",
     "ts-loader": "^6.2.1",
     "typescript": "^3.7.2",
