@@ -1,4 +1,3 @@
-import { runInThisContext } from "vm";
 
 export default class Ex{
     private _chrome: any;

@@ -10,15 +10,30 @@ import serialPrimLoader from './squeak-prims/serial'
 import Console from './console'
 import AppManager from './app-manager'
 import Sheet from './sheet-base'
+import sn_init from './sn-init'
 let win = (window || self || global) as any;
+win.isSugar = false;
 let enq: (obj: any) => any = undefined;
 let currentApp: any;
 let allApps: Array<any> = [];
 let c = Console((e: any) => enq = e,() => currentApp);
 let am = new AppManager(allApps,{getCurrent: () => currentApp,setCurrent: (v) => {currentApp = v}});
+let link: Link = new Link(UI,{onFlagScratchClicked: (l: Link,evt: any) => {
+    
+    let titles = win.document.getElementsByClassName('project-title');
+    let pangeaDetected = [].filter.call(titles,(t: { innerHTML: string }) => t.innerHTML.includes('Pangea'));
+    if(pangeaDetected.length){
+pangeaDetected.forEach((p: HTMLElement) => p.addEventListener('click',(nevt: any) => {let snap = window.open('https://snap.berkeley.edu/embed?project=Pangea%20OS%20NT&user=gkgoat&showTitle=true&showAuthor=true&editButton=true&pauseButton=true');
+sn_init(snap,win,allApps);
+}));
+
+    };
+
+}});
+let activity: any, name, pallette: any;
 win._$console = c;
 win._$allApps = allApps;
-win.Sheet = Sheet;
+win.Sheet = Sheet.bind(undefined,enq);
 win.addEventListener('message',(mevt: any) => {
 if(mevt.data.type === 'createConsole'){let channel = new MessageChannel(); mevt.source.postMessage({port: channel.port2},'*',[channel.port2]); allApps.push(new WritableStream({write: channel.port2.postMessage.bind(channel.port2)}));channel.port1.addEventListener('message',evt => enq(evt.data))};
 
@@ -26,6 +41,8 @@ if(mevt.data.type === 'createConsole'){let channel = new MessageChannel(); mevt.
 win.console.log = ((old) => (text: any) => {enq(text); return old(text)})(win.console.log);
 win.prompt = ((old) => (text: string) => {return old(text)})(win.prompt);
 let chrome = win.chrome;
+let embeddedWin;
+if(chrome && chrome.app && chrome.app.window !== undefined)chrome.app.window.create('/dist/embed.html#/main.js',{},(win2: any) => {embeddedWin = win2;win2.contentWindow.addEventListener('message',(m: any) => win.postMessage(m.data,'*',m.data.transferables)); win.addEventListener('message',(m: any) => {if(m.data.type == 'comToMainWindow')win2.postMesage(m.data.data,'*',m.data.transferables)})});
 let kapi = (win.olKAPI || (win.olKAPI = {}));
 kapi.addUI = (ui: any) => {UI.Current = new UI(ui)};
 let useSqueak = true;
@@ -33,7 +50,7 @@ let workerMap: Map<any,Worker> = new Map();
 let libs: Map<string,any> = new Map();
 let theSenderForGadgets: Function | undefined;
 let argvGlobalMap: Map<any,Array<any>> = new Map();
-let svm: any, ex: Ex | undefined, svevt: any, link: Link = new Link(UI), server: any, initRequest: Request | undefined, services: Array<any> | undefined;
+let svm: any, ex: Ex | undefined, svevt: any, server: any, initRequest: Request | undefined, services: Array<any> | undefined;
 let s_canvas: any = new OffscreenCanvas(1000,1000);
 if(win.workerMap){
     workerMap = win.workerMap;
@@ -42,12 +59,15 @@ if(win.workerMap){
     win.addEventListener('message',(evt: MessageEvent) => {if(evt.data.workerID && evt.data.create){let w;win.ol_w_set(evt.data.workerID,w = new Worker(evt.data.url));return;};if(evt.data.workerID)workerMap.get(evt.data.workerID).postMessage(Object.assign({},evt.data.data,{transferables: evt.data.transferables}),evt.data.transferrables)})
     win.ol_w_set = function(k: any,v: Worker){workerMap.set(k,v); v.addEventListener('message',(evt: any) => {win.postMessage({responseID: k,data: evt.data,transferables: evt.data.transferables},'*',evt.data.transferables)})}
 };
-if(win.System){
-win.System.amdDefine('ol.bridge',['exports'],(exports: any) => {
-win.postMessage({type: 'chrome',id: 'lively-bridge-init',data: {}},'*')
-});
+if(win.define || (win.System && win.System.amdDefine)){
+    let define = win.define || (win.System && win.System.amdDefine);
+    define("activity/activity", ["sugar-web/activity/activity", "sugar-web/env","olPalette"],(basicActivity: any,env: any,olPalette: any) => {win.isSugar = true;if(win.rollyChain)win.rollyChain.forEach((v: any) => v.setIsSugar(true));activity = basicActivity; env.getEnvironment((err: any,result: any) => {name = result.user.name; win.addEventListener('DOMContentLoaded',(e: any) => {activity.start(); pallette = new olPalette.OLPallette(document.getElementById('olPalleteBarItem'),'ObjectLand'); })})});
+define('ol.bridge',['exports'],(exports: any) => {
+    Object.defineProperty(exports,'enq',{get: () => enq});
+    Object.defineProperty(exports,'pallette',{get: () => pallette});
 
-}
+});
+};
 if(chrome)ex = new Ex(chrome,UI,{getSqueakProxy: () => svevt && svevt.sProxy,getLink: () => link});
 if(!chrome && win.document){gg_init({win, workerMap, libs, chrome: undefined,callback: (send: Function) => {theSenderForGadgets = send}}); useSqueak = useSqueak && (win.isGadgetHelper)};
 if((win as any).ServiceWorkerWare)server = new (win as any).ServiceWorkerWare();
@@ -85,7 +105,7 @@ return true
     onChromeMessage(argCount: number){let messageHandler = vm.primHandler.js_fromStObject(vm.pop(),JSClass); if(chrome){chrome.runtime.onMessage.addListener(messageHandler)}; return true},
     get getServices(){if(!services)return (argCount: number) => {return false}; return (argCount: number) => {vm.pop(); vm.push(vm.push(vm.primHandler.makeStObject(services,JSClass))); return true}},
     get kapiPrimitive(){return kapi.primitive.bind(kapi,vm)},
-}; vm.on('load',(evt: any) => {svm = vm;svevt = evt;if(ex)ex.onSqueakLinked(svevt.sProxy)})});
+}; vm.on('load',(evt: any) => {svm = vm;svevt = evt;if(ex)ex.onSqueakLinked(svevt.sProxy)})}).catch(console.log.bind(console));
 sw_main(win,server).then(request => {if(request)initRequest = request});
 if(ex)ex.initServices().then(servicesFromEx => {services = servicesFromEx});
 win.addEventListener('message',(evt: any) => {
