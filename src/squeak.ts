@@ -1,4 +1,3 @@
-import {Component} from './ui/main'
 export default function runSqueak(opts: any): Promise<any>{
     return new Promise((c,e) => {
 let SqueakJS = (window as any).SqueakJS;
