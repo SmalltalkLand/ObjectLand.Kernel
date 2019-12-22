@@ -1,7 +1,10 @@
 import * as  _ from 'lodash-es'
-import { createStore } from 'redux'
+import { createStore, combineReducers } from 'redux'
+import scopedReducer from 'reduxr-scoped-reducer';
 
 import Ex from './ex'
+import appRedux from './app-redux-handler'
+import messageRedux from './message-redux-handler'
 import execProg from './exec-program'
 import UI from './ui'
 import _squeak from './squeak-default'
@@ -16,15 +19,17 @@ import AppManager from './app-manager'
 import Sheet from './sheet-base'
 import sn_init from './sn-init'
 let win = (window || self || global) as any;
+let kernel: any = win.kernel = {};
 let uiWin;
 win.isSugar = false;
 let enq: (obj: any) => any = undefined;
-let currentAppt: any, currentApp : any;
 let allAppst: Array<any> = [], allApps: Array<any> = [];
-let c = Console((e: any) => enq = e,() => currentAppt);
-let tam = new AppManager(allAppst,{getCurrent: () => currentAppt,setCurrent: (v) => {currentAppt = v}});
-let am = new AppManager(allApps,{getCurrent: () => currentApp,setCurrent: (v) => {currentApp = v}});
-let theStore = createStore((old,action: any) => {if(action.type === '_changeData')return action.data;return old},{memeOkBoomer: false,memeFlatEarth: false});
+let reducer: any;
+let theStore = kernel.store = createStore(reducer = kernel.reducer = combineReducers({sysExtras: scopedReducer('extras_',combineReducers({})),message: (state,action) => messageRedux(reducer,state,action),app: _.partial(appRedux,win),sys: (old,action: any) => {if(action.type === 'setApp')return {app: action.data};if(action.type === 'setTApp')return {terminal: action.data};if(action.type === '_changeData')return action.data;return old}}),{sys: {app: undefined,terminal: undefined,memeOkBoomer: false,memeFlatEarth: false}} as any);
+win.addEventListener('message',(evt: any) => theStore.dispatch({type: 'message',data: evt}))
+let c = Console((e: any) => enq = e,() => theStore.getState().sys.terminal);
+let tam = new AppManager(allAppst,{getCurrent: () => theStore.getState().sys.terminal,setCurrent: (v) => {theStore.dispatch({type: 'setTApp',data: v})}});
+let am = new AppManager(allApps,{getCurrent: () => theStore.getState().sys.app,setCurrent: (v) => {theStore.dispatch({type: 'setApp',data: v})}});
 let link: Link = new Link(UI,{onFlagScratchClicked: (l: Link,evt: any) => {
     
     let titles = win.document.getElementsByClassName('project-title');
