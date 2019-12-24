@@ -1,0 +1,2 @@
+import * as  _ from 'lodash-es'
+export default _.once(function(chroma){return {mainColors: () => {let c = chroma.scale(['yellow','bluegreen']); return {primary: 'black',text: 'white',accents: c.colors(4)}}}})

@@ -1,15 +1,30 @@
+import './css/main.css'
+
 import * as  _ from 'lodash-es'
+import $ from 'cash-dom'
+import "morphic-gui/dist/morphic";
 import { createStore, combineReducers } from 'redux'
 import scopedReducer from 'reduxr-scoped-reducer';
+import reduceReducers from 'reduce-reducers'
+
+import * as vort from './vort'
+
+import './fill'
+
+import {pipe} from './pipe-funcs'
 
 import Ex from './ex'
+import BaseWindow from './base-window'
+import OlBridgeMorph from './ol-bridge-morph'
+import MJSWindow from './mjsWin'
 import appRedux from './app-redux-handler'
-import messageRedux from './message-redux-handler'
+import createAuthID from './auth-id-maker'
+import squeakReducer from './squeakReducer'
+import rintegration from './rIntegration'
 import execProg from './exec-program'
 import UI from './ui'
 import _squeak from './squeak-default'
 import Link from './link/main'
-import sw_main from'./worker/main'
 import argv from './argv-handler'
 import gg_init from './gadgets/framework'
 import scratchPrimLoader from './squeak-prims/scratch'
@@ -18,15 +33,55 @@ import Console from './console'
 import AppManager from './app-manager'
 import Sheet from './sheet-base'
 import sn_init from './sn-init'
+
+declare var kernel: any;
 let win = (window || self || global) as any;
-let kernel: any = win.kernel = {};
+let handlers: any = {};
+win.addEventListener = win.addEventListener || ((type: any,callback: any) => {(handlers[type] || (handlers[type] = [])).push(callback)});
+win.removeEventListener = win.removeEventListener || ((type: any,callback: any) => {handlers[type] = handlers[type] && handlers[type].filter((v: any) => v !== callback)});
+win.kernel = {};
+kernel.snap = (s: any,c: Function) => {s.$ = pipe($,_.partialRight($.fn.filter.call.bind($.fn.filter),'.sn_sandboxed')); c()};
+kernel.onRanVM = (vm: any,c: Function) => {Object.defineProperty(vm.image.specialObjectsArray,'vm',{get: () => vm})};
+kernel.vort = vort;
+kernel.BaseWindow = BaseWindow;
+kernel.auth = (password: string) => new Promise((c,e) => {kernel.store.getState().sys.usr.filter((u: { token: any; }) => u.token === password || u.token.OLCacheEndpointPassword === password).forEach(c); e()});
+kernel.prefs = (u: any) => new Promise(c => {fetch(u.domain || ('ol.co/' + u.name)).then(r => r.json()).then(c)});
+win.OlBridgeMorph = OlBridgeMorph;
 let uiWin;
 win.isSugar = false;
 let enq: (obj: any) => any = undefined;
 let allAppst: Array<any> = [], allApps: Array<any> = [];
 let reducer: any;
-let theStore = kernel.store = createStore(reducer = kernel.reducer = combineReducers({sysExtras: scopedReducer('extras_',combineReducers({})),message: (state,action) => messageRedux(reducer,state,action),app: _.partial(appRedux,win),sys: (old,action: any) => {if(action.type === 'setApp')return {app: action.data};if(action.type === 'setTApp')return {terminal: action.data};if(action.type === '_changeData')return action.data;return old}}),{sys: {app: undefined,terminal: undefined,memeOkBoomer: false,memeFlatEarth: false}} as any);
-win.addEventListener('message',(evt: any) => theStore.dispatch({type: 'message',data: evt}))
+let theStore = kernel.store = createStore(reducer = kernel.reducer = reduceReducers(
+    {sys: {k: {},app: undefined,terminal: undefined,memeOkBoomer: false,memeFlatEarth: false}} as any,
+    combineReducers({
+        sys: reduceReducers(null,
+            combineReducers({
+                k: reduceReducers(null,(s,a) => s),
+                usr: scopedReducer('usr_',(s: any,a: any) => {if(a.type === 'user-create')return Object.assign({},s,{users: s.users.concat([a.data])});if(a.type === 'user_remove')return Object.assign({},s,{users: s.users.filter((u: any) => u.name === a.data.name && u.passToken === a.data.token)});return s})
+
+            })
+            )
+
+    }),
+    combineReducers({
+        dt: reduceReducers({toolSlices: []}),
+        st: scopedReducer('squeak_',_.partial(squeakReducer,() => win.SqueakJS)),
+        rolly: combineReducers({
+            rIntegration: scopedReducer('r-integration_',_.partialRight(_.partial(rintegration,win),combineReducers({}))),
+            rData: scopedReducer('r-data_',(state: any = {},action: any) => {if(action.type === 'addLocalComponent')return Object.assign({},state,{[action.id]: action.data});if(action.type === 'setComponentID')return Object.assign({},state,{id: action.data});return state})
+        }),
+        sysExtras: scopedReducer('extras_',combineReducers({})),
+        app: _.partial(appRedux,win),
+        sys: (old,action: any) => {if(action.type === 'setApp')return {app: action.data};if(action.type === 'setTApp')return {terminal: action.data};if(action.type === '_changeData')return action.data;return old}
+    }),
+    scopedReducer('dt_',_.partial((slicer: any,mstate: any,action: any) => mstate.dt.toolSlices.reduce((state: any, slice: string) => Object.assign({},state,{[slice]: Object.assign({},state[slice],slicer(state[slice],action))}),mstate),
+    (slice: any,action: any) => {return slice})),
+    combineReducers({
+        auth: scopedReducer('auth_',(state: any,action: any) => {if(action.type === 'createID')return Object.assign({},state,{id: action.data || createAuthID()});return state}),
+    })
+));
+win.addEventListener('message',(m: any) => {theStore.dispatch({...m.data,source: m.source,origin: m.origin})})
 let c = Console((e: any) => enq = e,() => theStore.getState().sys.terminal);
 let tam = new AppManager(allAppst,{getCurrent: () => theStore.getState().sys.terminal,setCurrent: (v) => {theStore.dispatch({type: 'setTApp',data: v})}});
 let am = new AppManager(allApps,{getCurrent: () => theStore.getState().sys.app,setCurrent: (v) => {theStore.dispatch({type: 'setApp',data: v})}});
@@ -86,7 +141,6 @@ if((win as any).ServiceWorkerWare)server = new (win as any).ServiceWorkerWare();
 if(win.require && !server)try{server = win.require('express')()}catch(err){};
 if(win.document)link.listen(document.body);
 if(win.location && (win.location.hostname.includes('ol') || win.location.protocol === 'chrome-extension'))useSqueak = true;
-sw_main(win,server).then(request => {if(request)initRequest = request});
 if(ex)ex.initServices().then(servicesFromEx => {services = servicesFromEx});
 win.addEventListener('message',(evt: any) => {
     if(evt.data.type === 'exlinkgadget')theSenderForGadgets(Object.assign({},evt.data.data,{transferables: evt.data.transferables}),evt.data.transferables)

@@ -1,0 +1,1 @@
+export default HTMLElement && (HTMLElement as any).prototype.__proto__.__proto__.constructor
