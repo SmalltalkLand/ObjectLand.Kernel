@@ -2,7 +2,7 @@ import * as  _ from 'lodash-es'
 import runSqueak from './squeak'
 import UI from './ui'
 
-export default  (std : any,{win,kapi,s_canvas,argv,serialPrimLoader,scratchPrimLoader,initRequest,chrome,argvGlobalMap,services,ex}: any) => _.once(_.partial(runSqueak,({url: win.location.protocol + '//' + win.location.hostname + '/squeak/squeak.image',component: {element: {getContext(t: string){
+export default  (vmcls: any,std : any,{win,kapi,s_canvas,argv,serialPrimLoader,scratchPrimLoader,initRequest,chrome,argvGlobalMap,services,ex}: any) => _.once(_.partial(runSqueak,({Squeak: vmcls,url: win.location.protocol + '//' + win.location.hostname + '/squeak/squeak.image',component: {element: {getContext(t: string){
     if(win.document && UI.Current)return (UI.Current.getFramework().$rootComponent as any).SqueakDisplay.element.getContext(t);
     if(kapi.getSqueakContext)return kapi.getSqueakContext(t);
     return s_canvas.getContext(t)

@@ -53,5 +53,7 @@ var target = _target || element;
         var deltaY = event.clientY - mouseY;
         target.style.left = elementX + deltaX + 'px';
         target.style.top = elementY + deltaY + 'px';
+        element.style.left = elementX + deltaX + 'px';
+        element.style.top = elementY + deltaY + 'px';
     }
 }

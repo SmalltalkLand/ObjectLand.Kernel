@@ -20,6 +20,25 @@ module.exports = {
         test: /\.worker\.ts$/,
         use: [{ loader: 'worker-loader',options: Object.assign({},workerOpts) },'ts-loader']
       },
+      {
+        test: /\.shared-worker\.js$/,
+        use: { loader: 'shared-worker-loader',options: Object.assign({},workerOpts) }
+      },
+      {
+        test: /\.shared-worker\.ts$/,
+        use: [{ loader: 'shared-worker-loader',options: Object.assign({},workerOpts) },'ts-loader']
+      },
+      {
+        test: /\.svg/,
+        use: {
+            loader: 'svg-url-loader',
+            options: {}
+            },
+      },
+      {
+        test: /\.wasm$/,
+        loaders: ['wasm-loader']
+      }
     ],
   },
   resolve: {

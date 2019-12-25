@@ -1,7 +1,9 @@
 import './css/main.css'
 
 import * as  _ from 'lodash-es'
+import WebMidi from 'webmidi';
 import $ from 'cash-dom'
+import { Terminal } from 'xterm';
 import "morphic-gui/dist/morphic";
 import { createStore, combineReducers } from 'redux'
 import scopedReducer from 'reduxr-scoped-reducer';
@@ -12,6 +14,8 @@ import * as vort from './vort'
 import './fill'
 
 import {pipe} from './pipe-funcs'
+
+import MainWorker from './worker/main.shared-worker.js'
 
 import Ex from './ex'
 import BaseWindow from './base-window'
@@ -33,13 +37,48 @@ import Console from './console'
 import AppManager from './app-manager'
 import Sheet from './sheet-base'
 import sn_init from './sn-init'
+import id from './util/id'
+import initTerm from './initTerm';
 
 declare var kernel: any;
+declare var IDE_Morph: any;
+declare var sq_module: any;
+let c: any;
+let theWorker = new (MainWorker as any)();
+let OTerminal = pipe(v => new Terminal(v),_.partial(initTerm,theWorker));
+let sendp = (evt: any) => new Promise(c => {let id_:any;theWorker.postMessage({...evt,id: id_ = id()}); window.addEventListener('message',function a(evt: { data: { id: any; }; }){if(evt.data.id === id_){window.removeEventListener('message',a); return c()}})});
 let win = (window || self || global) as any;
+let script = (name: string) => new Promise((c,e) => {var script = document.createElement('script');
+script.onload =c;
+script.onerror = e;
+script.src = name;
+
+document.head.appendChild(script);});
+$('#brave, .window-boot, #sn_world').each(function(){BaseWindow(this,{decoration: (elem: any) => {},title: $(this).find('.title').appendTo($('body')).get(0)})});
+script('../../Snap/src/symbols.js').then(_.partial(script,'../../Snap/src/blocks.js')).then(_.partial(script,'../../Snap/src/threads.js')).then(_.partial(script,'../../Snap/src/objects.js')).then(_.partial(script,'../../Snap/src/cloud.js')).then(_.partial(script,'../../Snap/src/lists.js')).then(_.partial(script,'../../Snap/src/byob.js')).then(_.partial(script,'../../Snap/src/sketch.js')).then(_.partial(script,'../../Snap/src/video.js')).then(_.partial(script,'../../Snap/src/maps.js')).then(_.partial(script,'../../Snap/src/xml.js')).then(_.partial(script,'../../Snap/src/store.js')).then(_.partial(script,'../../Snap/src/locale.js')).then(_.partial(script,'../../Snap/src/api.js')).then(_.partial(script,'../../Snap/src/FileSaver.min.js')).then(() => {
+let world: any;
+document.addEventListener('load',function () {
+    world = new WorldMorph(document.getElementById('sn_world'));
+    new IDE_Morph(false,kernel).openIn(world);
+    loop();
+});
+function loop() {
+    requestAnimationFrame(loop);
+    world.doOneCycle();
+}
+
+}).catch(err => {});
+script('../../ObjectLand.SqueakJS/squeak.js').then(() => new Promise(c => sq_module('ObjectLand').requires('SqueakJS').toRun(c))).then(() => {return win.SqueakJS}).then(sjs => _squeak(sjs,{stdin: c[1],stdout: c[0]},{win,kapi,s_canvas,argv,serialPrimLoader,scratchPrimLoader,initRequest,chrome,argvGlobalMap,services,ex})).catch(err => {});
+win.addEventListener('message',(evt: any) => {if(evt.type === 'installAppTemp')sendp({type: 'installAppTemp',data: evt.data})});
+let MIDIinputs, MIDIoutputs: any;
+WebMidi.enable(err => {if(!err){MIDIinputs = WebMidi.inputs;MIDIoutputs = WebMidi.outputs; if(MIDIinputs[0])MIDIinputs[0].addListener('noteoff','all',pipe(n => ({type: 'midi',data: n}),sendp,p => p.then((r: any) => r.data[0] && MIDIoutputs[0].playNote(...(r.data as Array<any>)))))}})
 let handlers: any = {};
 win.addEventListener = win.addEventListener || ((type: any,callback: any) => {(handlers[type] || (handlers[type] = [])).push(callback)});
 win.removeEventListener = win.removeEventListener || ((type: any,callback: any) => {handlers[type] = handlers[type] && handlers[type].filter((v: any) => v !== callback)});
 win.kernel = {};
+kernel.theWorker = theWorker;
+kernel.OMainTerminal = OTerminal;
+kernel.OTerminal = Terminal;
 kernel.snap = (s: any,c: Function) => {s.$ = pipe($,_.partialRight($.fn.filter.call.bind($.fn.filter),'.sn_sandboxed')); c()};
 kernel.onRanVM = (vm: any,c: Function) => {Object.defineProperty(vm.image.specialObjectsArray,'vm',{get: () => vm})};
 kernel.vort = vort;
@@ -47,6 +86,7 @@ kernel.BaseWindow = BaseWindow;
 kernel.auth = (password: string) => new Promise((c,e) => {kernel.store.getState().sys.usr.filter((u: { token: any; }) => u.token === password || u.token.OLCacheEndpointPassword === password).forEach(c); e()});
 kernel.prefs = (u: any) => new Promise(c => {fetch(u.domain || ('ol.co/' + u.name)).then(r => r.json()).then(c)});
 win.OlBridgeMorph = OlBridgeMorph;
+
 let uiWin;
 win.isSugar = false;
 let enq: (obj: any) => any = undefined;
@@ -82,7 +122,7 @@ let theStore = kernel.store = createStore(reducer = kernel.reducer = reduceReduc
     })
 ));
 win.addEventListener('message',(m: any) => {theStore.dispatch({...m.data,source: m.source,origin: m.origin})})
-let c = Console((e: any) => enq = e,() => theStore.getState().sys.terminal);
+c = Console((e: any) => enq = e,() => theStore.getState().sys.terminal);
 let tam = new AppManager(allAppst,{getCurrent: () => theStore.getState().sys.terminal,setCurrent: (v) => {theStore.dispatch({type: 'setTApp',data: v})}});
 let am = new AppManager(allApps,{getCurrent: () => theStore.getState().sys.app,setCurrent: (v) => {theStore.dispatch({type: 'setApp',data: v})}});
 let link: Link = new Link(UI,{onFlagScratchClicked: (l: Link,evt: any) => {
