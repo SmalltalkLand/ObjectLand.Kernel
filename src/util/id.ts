@@ -1,1 +1,0 @@
-export default function id(){return new Array(10).map(el => String.fromCharCode((Math.random() * 128) + 20)).reduce((a,b) => a ? a + b : b); }

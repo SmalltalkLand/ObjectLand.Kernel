@@ -1,0 +1,1 @@
+export default (worker: any,Morph: any) => class extends Morph{}

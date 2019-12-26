@@ -1,1 +1,0 @@
-export default (evt: MessageEvent) => evt.data
