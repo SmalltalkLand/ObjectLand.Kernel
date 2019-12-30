@@ -3,7 +3,6 @@ import $ from 'cash-dom'
 import Editor from './editor';
 import * as OfflinePluginRuntime from 'offline-plugin/runtime';
 import * as Tone from "Tone";
-import * as LogRocket from 'logrocket';
 
 import WorkerMain from './main.shared-worker.js';
 import sandbox from './lib/sandbox.js';
@@ -15,7 +14,8 @@ import empowerWikipedia from './empower/wikipedia';
 import exLink from './luurvely/ex-link';
 import script from './script';
 import scriptLocal from './scriptLocal';
-LogRocket.init('z2xfo8/objectlandweb-kernel');
+
+import './lr.js'
 
 OfflinePluginRuntime.install();
 
