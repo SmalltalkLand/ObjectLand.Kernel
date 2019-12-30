@@ -1,0 +1,1 @@
+export default (func: (...args: any) => any,errorFunc: (error: Error) => any) => (...args: any) => {try{return func(...args)}catch(err){return errorFunc(err)}}

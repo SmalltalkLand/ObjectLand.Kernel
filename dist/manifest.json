@@ -1,0 +1,27 @@
+{"manifest_version": 2,
+"name": "ObjectLand",
+"version": "0.1",
+"background": {"scripts": ["ex.js","virtual-dom.js"]},
+"content_scripts": [{
+"matches": ["*://*/*"],
+"css": ["external/popup-main.css","external/popup-theme-dark.css","external/draggable-resizable-dialog.css"],
+"js": ["virtual-dom.js","external/popup.js","external/draggable-resizable-dialog.js","custom-elements.min.js","native-shim.js","external/morphic.js","main.js"]
+
+},{
+"matches": ["*://jestjs.io/*"],
+"css": [],
+"js": ["test-online.js"]
+
+},{
+"matches": ["*://lively-kernel.org/lively4/*"],
+"css": [],
+"js": ["lively.js"]
+
+}],
+"permissions": [
+    "tabs"
+  ],
+  "web_accessible_resources": [
+    "inject.js"
+]
+}
