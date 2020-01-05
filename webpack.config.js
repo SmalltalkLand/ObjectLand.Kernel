@@ -1,5 +1,6 @@
 const path = require('path');
 var OfflinePlugin = require('offline-plugin');
+// rpi
 var workerOpts = { inline: true};
 module.exports = {
   entry: {main: './src/index.ts',ex: './src/index.crex.js',inject: './src/inject/inject.js',aapi: './src/aapi.js','chrome-fill': './src/chrome-fill.ts',lively: './src/luurvely/lively.ts',test: './src/test.ts','test-online': './src/jest-entry.ts'},
