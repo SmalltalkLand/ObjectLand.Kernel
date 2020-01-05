@@ -2,7 +2,7 @@ const path = require('path');
 var OfflinePlugin = require('offline-plugin');
 var workerOpts = { inline: true};
 module.exports = {
-  entry: {main: './src/index.ts',ex: './src/index.crex.js',inject: './src/inject/inject.js',start: './src/node/start.ts',aapi: './src/aapi.js','chrome-fill': './src/chrome-fill.ts',lively: './src/luurvely/lively.ts',test: './src/test.ts','test-online': './src/jest-entry.ts'},
+  entry: {main: './src/index.ts',ex: './src/index.crex.js',inject: './src/inject/inject.js',aapi: './src/aapi.js','chrome-fill': './src/chrome-fill.ts',lively: './src/luurvely/lively.ts',test: './src/test.ts','test-online': './src/jest-entry.ts'},
   module: {
     rules: [
       {
@@ -56,4 +56,8 @@ module.exports = {
 
     new OfflinePlugin(),
   ],
+  node: {
+    fs: 'empty',
+    net: 'empty',
+  }
 };

@@ -1,15 +1,13 @@
-import {common,isMain} from './common'
 var express = require('express');
-var ecstatic = require('ecstatic');
-var cors = require("cors");
+var ecstatic = express.static;
 var app: any = express();
 var http = require('http');
 var fs = require('fs');
-var WebSocket = require('ws');
+let WebSocket2: any = require('ws');
 const session = require('express-session');
 var replace = require('stream-replace');
 let io: any;
-let wss = new WebSocket.Server({noServer: true});
+let wss = new (WebSocket2.Server)({noServer: true});
 let procMap = new Map();
 const sessionParser = session({
     saveUninitialized: false,
@@ -47,10 +45,9 @@ procMap.delete(myProcID);
 
 });
 let s;
-app.use(cors());
-app.use('static/',ecstatic({root: `${__dirname}/`,handleError: false}));
-app.use('wikipedia/',(req: any,res: any) => http.get('en.wikipedia.org' + new URL(req.url).pathname,(http: any) => req.pipe(http).pipe(res)));
-app.get('app/:aid/index.js',async (req: any,res: any) => {
+app.use('/static/',(req: any,res: { setHeader: (arg0: string, arg1: string) => void; },next: () => any) => {res.setHeader('Access-Control-Allow-Origin','*');return next()},ecstatic(`${__dirname}/../../dist`));
+app.use('/wikipedia/',(req: any,res: any) => http.get('en.wikipedia.org' + new URL(req.url).pathname,(http: any) => req.pipe(http).pipe(res)));
+app.get('/app/:aid/index.js',async (req: any,res: any) => {
     let s = fs.createReadStream(`${__dirname}/aapi.js`);
     s.pipe(replace('TOKEN',req.params.token)).pipe(res,{end: false});
     await new Promise(s.on.bind(s,'end'));
@@ -67,7 +64,6 @@ procMap.get(req.params.p)(req,res,req.params.e);
 
 });
 (s = http.createServer(app));
-try{io = require('socket.io')(http);}catch(err){};
 s.on('upgrade',function onUpgrade(req: any,socket: any,head: any){
 let u = new URL(req.url);
 sessionParser(req,{},() => {

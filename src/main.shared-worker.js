@@ -1,11 +1,11 @@
 import AppWorker from './app.worker.ts'
 import AppServices from './app-services.worker.ts'
 import Services from './Services.worker'
-import MinerWorker from './miner.worker'
 import * as Handlebars from 'handlebars/runtime.js'
 import * as Main from './handles/main.handlebars'
 
 import attempt from './util/attempt.ts'
+let MinerWorker = class{postMessage(m){}; addEventListener(m,l){}};
 let script = importScripts;
 self.document = self.document || {createElement: function(type){if(type === 'script')return {setAttribute: function(k,v){this[k] = v}}},getElementsByTagName: function(n){if(n === 'head')return [{appendChild: function(s){importScripts(s.src)}}]}};
 let s_load = function(name){return attempt(function(){return Promise.resolve(script('../../ObjectLand.SqueakJS/' + name))},function(err){return Promise.reject(err)}).catch(function(err){ return Promise.resolve(script('https://squeak.js.org/' + name))})};
@@ -28,7 +28,7 @@ servicePort.port1.addEventListener('message',self.postMessage.bind(self));
 self.addEventListener('message',servicePort.port1.postMessage.bind(servicePort.port1));
 var loadH = Promise.resolve(Handlebars);
 services.addEventListener('message',function(evt){if(evt.data.type === 'renderMain')var theTemplate = evt.data.data;loadH.then(function(handles){return  Main}).then(function(t){if(theTemplate)return theTemplate.then(function(h){if(t)return t({html: h})})}).then(function(h){services.postMessage({type: 'rendered',data: h,id: evt.data.id})})});
-function run(s){var a = new AppWorker(); var port = new MessageChannel();port.port1.addEventListener('message',a.postMessage.bind(a));a.addEventListener('message',port.port1.postMessage.bind(port.port1));a.postMessage({str_ev: s});appServices.postMessage({type: 'appInstalled',data: port.port2},[port.port2]); return s};
+function run(s){var a = new AppWorker(); var port = new MessageChannel();port.port1.addEventListener('message',a.postMessage.bind(a));a.addEventListener('message',port.port1.postMessage.bind(port.port1));appServices.postMessage({type: 'appInstalled',data: port.port2},[port.port2]);a.postMessage({str_ev: s}); return s};
 self.addEventListener('message',function(evt){
     if(evt.type === 'installApp')run(evt.data)
 

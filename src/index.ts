@@ -14,13 +14,23 @@ import empowerWikipedia from './empower/wikipedia';
 import exLink from './luurvely/ex-link';
 import script from './script';
 import scriptLocal from './scriptLocal';
+import react from './React'
 
-import './lr.js'
 
 OfflinePluginRuntime.install();
 
 let win = (window || self || global) as any;
 let DialogWindow = class extends HTMLElement{
+    static get observedAttributes() {
+        return ['title'];
+      }
+      attributeChangedCallback(name: any, oldValue: any, newValue: any) {
+        switch (name) {
+          case 'title':
+            this.setTitle(newValue);
+            break;
+        }
+      }
     dialog: any;title: any;constructor(){super(); this.attachShadow({mode: 'open'}); this.shadowRoot.innerHTML = `<div style = "position:absolute"><div id="titlebar" class = "titlebar">${this.title}</div>
 	<button name="close"><!-- enter symbol here like &times; or &#x1f6c8; or use the default X if empty --></button>
     <div class="content" id = "content">
@@ -45,6 +55,8 @@ let Morphic = class extends HTMLCanvasElement{ private world: any;constructor(){
 try{customElements.define('ol-dialog',DialogWindow);}catch(err){DialogWindow = customElements.get('ol-dialog')};
 try{customElements.define('ol-morphic',Morphic);}catch(err){Morphic = customElements.get('ol-morphic')};
 try{customElements.define('ol-pharO',PharO)}catch(err){PharO = customElements.get('ol-pharO')};
+let rct: any;
+react().then(c => {rct = c;return new Promise(c => rct.setState({worker: w},c))});
 win.addEventListener('message',(evt: any) => {if(evt.data.type === 'windowify'){let d = new win.DialogBox(evt.data.shadow ? document.getElementById(evt.data.id).shadowRoot : document.getElementById(evt.data.id),() => {}); d.showDialog()}});
 let chr_message = (m: any) => new Promise(c => {if(!win.chrome)throw new Error(); win.chrome.runtime.postMessage(m,c)});
 let installApp: { (arg0: any): void; (evt: any): Promise<any>; };

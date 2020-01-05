@@ -1,0 +1,2 @@
+export function *process_group(gens: any[]){let nm = new Map(); while(true)for(let g of gens)nm.set(g,yield g.next(nm.get(g)))}
+export function* dynamic(gens: Function){let n;while(true)n = yield gens().next(n)}

@@ -6,7 +6,7 @@ export default function sandboxJS(js,p) {
     };
     var proxy = new Proxy(new Proxy(global || self,p),handlers);
     var proxyName = `proxy${Math.floor(Math.random() * 1E9)}`;
-    var fn = new Function(proxyName,`with(${proxyName}){${js}}`);
-    return fn.call(this,proxy);
+    var fn = new Function(proxyName + ' callback',`with(${proxyName}){callback(${js})}`);
+    return new Promise(c => requestAnimationFrame(fn.bind(this,proxy,c)));
   }
   
