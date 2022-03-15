@@ -48,7 +48,7 @@
   "dependencies": {
     "cash-dom": "^5.0.0",
     "handlebars": "^4.5.3",
-    "lodash-es": "^4.17.15",
+    "lodash-es": "^4.17.21",
     "morphic-gui": "^1.0.1",
     "offline-plugin": "^5.0.7",
     "react": "^16.12.0",
